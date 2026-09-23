@@ -152,12 +152,12 @@ TOP_LONGS_TO_SHOW = int(
 #   TELEGRAM_CHAT_ID
 
 TELEGRAM_BOT_TOKEN = os.getenv(
-    "8984037851:AAGnc5Tm088pqdilp8kL-I5giUXylP8hRQQ",
+    "TELEGRAM_BOT_TOKEN",
     ""
 ).strip()
 
 TELEGRAM_CHAT_ID = os.getenv(
-    "1860594381",
+    "TELEGRAM_CHAT_ID",
     ""
 ).strip()
 
