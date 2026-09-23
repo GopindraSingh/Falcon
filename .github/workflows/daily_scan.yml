@@ -63,8 +63,8 @@ jobs:
 
       - name: Verify environment
         env:
-          TELEGRAM_BOT_TOKEN: ${{"8984037851:AAGnc5Tm088pqdilp8kL-I5giUXylP8hRQQ"}}
-          TELEGRAM_CHAT_ID: ${{"1860594381"}}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "UTC time:"
           date -u
