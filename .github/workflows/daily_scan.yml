@@ -1,0 +1,59 @@
+name: Telegram Connection Test
+
+on:
+workflow_dispatch:
+
+permissions:
+contents: read
+
+jobs:
+
+telegram-test:
+
+```
+runs-on: ubuntu-latest
+
+steps:
+
+  - name: Checkout repository
+    uses: actions/checkout@v4
+
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: "3.11"
+
+  - name: Install requests
+    run: |
+      python -m pip install --upgrade pip
+      pip install requests
+
+  - name: Verify secrets exist
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    run: |
+      echo "Checking Telegram configuration..."
+
+      if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+        echo "ERROR: TELEGRAM_BOT_TOKEN is missing."
+        exit 1
+      fi
+
+      if [ -z "$TELEGRAM_CHAT_ID" ]; then
+        echo "ERROR: TELEGRAM_CHAT_ID is missing."
+        exit 1
+      fi
+
+      echo "TELEGRAM_BOT_TOKEN: configured"
+      echo "TELEGRAM_CHAT_ID: configured"
+
+  - name: Test Telegram
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    run: |
+      python test_telegram.py
+```
