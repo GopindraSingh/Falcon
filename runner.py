@@ -1,107 +1,124 @@
 """
-Single-shot NSE scanner runner.
+Single-shot live runner.
 
-Scheduled execution:
-09:46-09:55 IST
-
-Manual execution:
-Allowed for testing.
+Called by GitHub Actions at approximately:
+    09:46 IST
+    04:16 UTC
 
 The runner:
-1. verifies weekday
-2. verifies execution window for scheduled runs
-3. allows manual runs for testing
-4. runs scanner.run_live_scan() exactly once
-5. exits
+    1. verifies weekday
+    2. verifies the intended execution window
+    3. validates configuration
+    4. runs scanner.run_live_scan() exactly once
+    5. prints full traceback on failure
+    6. exits
+
+It does NOT loop.
 """
 
-from **future** import annotations
+from __future__ import annotations
 
 import os
 import sys
+import traceback
 
 import pandas as pd
 
 from scanner import (
-EXECUTION_TIME,
-MARKET_TZ,
-run_live_scan,
+    EXECUTION_TIME,
+    MARKET_TZ,
+    run_live_scan,
 )
+
+
+# ================================================================
+# CONFIGURATION
+# ================================================================
+
+EXECUTION_WINDOW_END = "09:55:00"
+
+
+# ================================================================
+# MAIN
+# ================================================================
 
 def main() -> int:
 
-```
-now = pd.Timestamp.now(
-    tz=MARKET_TZ
-)
-
-event_name = os.getenv(
-    "GITHUB_EVENT_NAME",
-    ""
-)
-
-is_manual = (
-    event_name == "workflow_dispatch"
-)
-
-print(
-    f"Runner time: "
-    f"{now:%Y-%m-%d %H:%M:%S %Z}"
-)
-
-print(
-    f"GitHub event: "
-    f"{event_name or 'local execution'}"
-)
-
-# ------------------------------------------------------------
-# Monday-Friday only.
-# ------------------------------------------------------------
-
-if now.weekday() >= 5:
-
-    print(
-        "Weekend. Scanner will not execute."
-    )
-
-    return 0
-
-# ------------------------------------------------------------
-# Manual GitHub Action execution.
-#
-# This bypasses the 09:46-09:55 time gate so the workflow
-# can be tested manually.
-#
-# IMPORTANT:
-# A manual run outside market hours is NOT a true live
-# 09:45 signal. It is only a pipeline/data/Telegram test.
-# ------------------------------------------------------------
-
-if is_manual:
-
-    print(
-        "Manual workflow execution detected."
+    now = pd.Timestamp.now(
+        tz=MARKET_TZ
     )
 
     print(
-        "Time-window restriction bypassed "
-        "for testing."
+        f"Runner time: "
+        f"{now:%Y-%m-%d %H:%M:%S %Z}"
     )
 
-else:
+    # ------------------------------------------------------------
+    # Environment diagnostics
+    # ------------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Scheduled execution window.
-    # --------------------------------------------------------
+    print(
+        "Python environment:"
+    )
+
+    print(
+        f"TELEGRAM_BOT_TOKEN configured: "
+        f"{bool(os.getenv('TELEGRAM_BOT_TOKEN'))}"
+    )
+
+    print(
+        f"TELEGRAM_CHAT_ID configured: "
+        f"{bool(os.getenv('TELEGRAM_CHAT_ID'))}"
+    )
+
+    # ------------------------------------------------------------
+    # Monday-Friday only.
+    # ------------------------------------------------------------
+
+    if now.weekday() >= 5:
+
+        print(
+            "Weekend. Scanner will not execute."
+        )
+
+        return 0
+
+    # ------------------------------------------------------------
+    # Intended execution window.
+    #
+    # GitHub Actions cron can be delayed.
+    #
+    # We therefore allow:
+    #
+    # 09:46:00
+    # through
+    # 09:55:00
+    #
+    # IST.
+    # ------------------------------------------------------------
+
+    date_string = (
+        now.strftime(
+            "%Y-%m-%d"
+        )
+    )
 
     execution_start = pd.Timestamp(
-        f"{now:%Y-%m-%d} 09:46:00",
+        f"{date_string} "
+        f"{EXECUTION_TIME}:00",
         tz=MARKET_TZ,
     )
 
     execution_end = pd.Timestamp(
-        f"{now:%Y-%m-%d} 09:55:00",
+        f"{date_string} "
+        f"{EXECUTION_WINDOW_END}",
         tz=MARKET_TZ,
+    )
+
+    print(
+        f"Allowed execution window: "
+        f"{execution_start:%H:%M:%S} - "
+        f"{execution_end:%H:%M:%S} IST"
     )
 
     if not (
@@ -116,43 +133,71 @@ else:
 
         print(
             "Expected: "
-            "09:46-09:55 IST"
+            f"{EXECUTION_TIME}:00-"
+            f"{EXECUTION_WINDOW_END} IST"
         )
 
         return 0
 
-# ------------------------------------------------------------
-# Execute scanner exactly once.
-# ------------------------------------------------------------
-
-print(
-    "Executing ONE scanner run..."
-)
-
-try:
-
-    run_live_scan()
-
-except Exception as exc:
+    # ------------------------------------------------------------
+    # Execute scanner once.
+    # ------------------------------------------------------------
 
     print(
-        f"Scanner failed: "
-        f"{type(exc).__name__}: {exc}"
+        "Executing ONE live market scan..."
     )
 
-    return 1
+    try:
 
-print(
-    "Scanner completed successfully."
-)
+        run_live_scan()
 
-return 0
-```
+    except Exception as exc:
 
-if **name** == "**main**":
+        print()
+        print(
+            "========================================"
+        )
+        print(
+            "SCANNER FAILED"
+        )
+        print(
+            "========================================"
+        )
 
-```
-sys.exit(
-    main()
-)
-```
+        print(
+            f"Error type: {type(exc).__name__}"
+        )
+
+        print(
+            f"Error: {exc}"
+        )
+
+        print()
+        print(
+            "Full traceback:"
+        )
+
+        traceback.print_exc()
+
+        print(
+            "========================================"
+        )
+
+        return 1
+
+    print(
+        "Live scan completed successfully."
+    )
+
+    return 0
+
+
+# ================================================================
+# ENTRY POINT
+# ================================================================
+
+if __name__ == "__main__":
+
+    sys.exit(
+        main()
+    )
