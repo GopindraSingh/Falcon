@@ -56,4 +56,3 @@ steps:
 
     run: |
       python test_telegram.py
-```
